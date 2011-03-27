@@ -1,3 +1,4 @@
+/*Implementa el primer algoritmo de exclusion mutua: Alternancia estricta*/
 #include<dos.h>
 #include<stdlib.h>
 #include<string.h>
@@ -16,7 +17,7 @@ struct process{
 };
 
 /*Variables globales*/
-process pcb[4];
+process pcb[2];
 const int quantum = 4;
 int indexProcess = 0;
 int stackPointerAux;
@@ -24,23 +25,42 @@ int stackPointer;
 int indexOffset;
 int indexAux;
 int quantumProcess;
+int actualProcess;
 
 /*Procesos a controlar*/
 void processA(...)
 {
+	int color = 1;
 	while(1)
 	{
+		//tareas previas
+		while (actualProcess == 2)
+		//seccion critica
 		gotoxy(2,2);
-		cprintf("soy A :D ");
+		textcolor(color);
+		cprintf("soy proceso A");
+		actualProcess = 2;
+		//otras tareas
+		color++;
+		color = color % 15;
 	}
 }
 
 void processB(...)
 {
+	int color = 15;
 	while(1)
 	{
+		//tareas previas
+		while (actualProcess == 1)
+		//Seccion critica
 		gotoxy(2,4);
-		cprintf("soy B :) ");
+		textcolor(color);
+		cprintf("soy proceso B");
+		actualProcess = 1;
+		//Otras tareas
+		color++;
+		color = color % 15;
 	}
 }
 
@@ -78,18 +98,6 @@ void initPCB(...)
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
 	
-	//Inicializa el tercer nodo del PCB
-	pcb[2].offset = FP_OFF(processC);
-	pcb[2].quantum = quantum;
-	pcb[2].id = 'C';
-	pcb[2].status = 2;
-	
-	//Inicializa el cuarto nodo del PCB
-	pcb[3].offset = FP_OFF(processD);
-	pcb[3].quantum = quantum;
-	pcb[3].id = 'D';
-	pcb[3].status = 2;
-	
 	//Guarda el SP de nuestro programa
 	asm mov stackPointer,sp
 	stackPointerAux = stackPointer;
@@ -119,55 +127,6 @@ void initPCB(...)
 	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
 	pcb[1].stcPtr = stackPointerAux;
 	
-	//Realiza un corrimiento en la pila para el segundo proceso
-	stackPointerAux = stackPointerAux - 1024;
-	indexOffset = pcb[2].offset;
-
-	//Guarda todo el contexto del proceso 2
-	asm {
-		mov sp,stackPointerAux
-		pushf
-		push cs
-		push indexOffset
-		push ax
-		push bx
-		push cx
-		push dx
-		push es
-		push ds
-		push si
-		push di
-		push bp
-		mov stackPointerAux, SP
-		mov SP, stackPointer
-	};
-	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
-	pcb[2].stcPtr = stackPointerAux;
-	
-	//Realiza un corrimiento en la pila para el tercer proceso
-	stackPointerAux = stackPointerAux - 1536;
-	indexOffset = pcb[3].offset;
-	
-	//Guarda todo el contexto del proceso 3
-	asm {
-		mov sp,stackPointerAux
-		pushf
-		push cs
-		push indexOffset
-		push ax
-		push bx
-		push cx
-		push dx
-		push es
-		push ds
-		push si
-		push di
-		push bp
-		mov stackPointerAux, SP
-		mov SP, stackPointer
-	};
-	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
-	pcb[3].stcPtr = stackPointerAux;
 	indexProcess = 0;
 	quantumProcess =pcb[indexProcess].quantum;
 }
@@ -180,6 +139,7 @@ void main()
 	initPCB();
 	prev=getvect(8);	//Guarda la interrupci¢n antigua del timer
 	setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
+	actualProcess = 1;
 	processA();
 	clrscr();
 	while(1)
@@ -213,11 +173,11 @@ void interrupt myTimer(...)
 		}
 		indexAux = indexProcess;
 		indexProcess++;
-		indexProcess = indexProcess % 5;
+		indexProcess = indexProcess % 2;
 		if (pcb[indexProcess].status != 2)
 		{
 			indexProcess++;
-			indexProcess = indexProcess % 5;
+			indexProcess = indexProcess % 2;
 		}
 		//Guarda el quantum del nuevo proceso.
 		quantumProcess = pcb[indexProcess].quantum;
