@@ -41,6 +41,7 @@ void processA(...)
 		gotoxy(2,2);
 		cprintf("proceso A");
 		p1DeseaEntrar = 0;
+		cprintf("termino A");
 		//otras tareas
 	};
 }
@@ -57,6 +58,7 @@ void processB(...)
 		gotoxy(2,4);
 		cprintf("proceso b");
 		p2DeseaEntrar = 0;
+		cprintf("termino b");
 		//otras tareas
 	};
 }
@@ -128,49 +130,49 @@ void main()
 /*Codigo fuente de nuestra interrupcion del timer*/
 void interrupt myTimer(...)
 {
-	disable();              //Apaga las dem?s interrupciones
-	(*prev)();              //Llama al antiguo c?digo de interrupcion
+	disable();              //Apaga las demas interrupciones
+	(*prev)();              //Llama al antiguo codigo de interrupcion
 	//Espera una tecla y verifica si es la tecla Enter
 	if(kbhit()  && getch() == 0xD)
 	{
 		//Devuelve la interrupci?n original
 		setvect(8,prev);
 		exit(0);
-        }
-        if (quantumProcess > 0)
-        {
-                //Si el proceso aun  tiene quantum lo disminuye.
-                quantumProcess--;
-        }
-        else
-        {
-                //Salva el SP del proceso que se quedo sin quantum
-                asm mov  stackPointer, SP
-                pcb[indexProcess].stcPtr = stackPointer;
-                if (pcb[indexProcess].status == 1)
-                {
-                        pcb[indexProcess].status = 2;
-                }
-                indexAux = indexProcess;
-                indexProcess++;
-                indexProcess = indexProcess % 2;
-                if (pcb[indexProcess].status != 2)
-                {
-                        indexProcess++;
-                        indexProcess = indexProcess % 2;
-                }
-                //Guarda el quantum del nuevo proceso.
-                quantumProcess = pcb[indexProcess].quantum;
+	}
+	if (quantumProcess > 0)
+	{
+		//Si el proceso aun  tiene quantum lo disminuye.
+		quantumProcess--;
+	}
+	else
+	{
+		//Salva el SP del proceso que se quedo sin quantum
+		asm mov  stackPointer, SP
+		pcb[indexProcess].stcPtr = stackPointer;
+		if (pcb[indexProcess].status == 1)
+		{
+			pcb[indexProcess].status = 2;
+		}
+		indexAux = indexProcess;
+		indexProcess++;
+		indexProcess = indexProcess % 2;
+		if (pcb[indexProcess].status != 2)
+		{
+			indexProcess++;
+			indexProcess = indexProcess % 2;
+		}
+		//Guarda el quantum del nuevo proceso.
+		quantumProcess = pcb[indexProcess].quantum;
 
-                //revisa que no se repita el proceso que se acaba de quedar sin quantum
-                if (indexAux != indexProcess)
-                {
-                        //Le indica que el nuevo proceso va estar en estado ejecutado.
-                        pcb[indexProcess].status = 1;
-                        stackPointer = pcb[indexProcess].stcPtr;
-                        //Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
-                        asm mov sp,stackPointer
-                }
-        }
-        enable();               //Activa las dem?s interrupciones
+		//revisa que no se repita el proceso que se acaba de quedar sin quantum
+		if (indexAux != indexProcess)
+		{
+			//Le indica que el nuevo proceso va estar en estado ejecutado.
+			pcb[indexProcess].status = 1;
+			stackPointer = pcb[indexProcess].stcPtr;
+			//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
+			asm mov sp,stackPointer
+		}
+	}
+	enable();               //Activa las dem?s interrupciones
 }
