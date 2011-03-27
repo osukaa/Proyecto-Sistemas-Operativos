@@ -38,7 +38,8 @@ void processA(...)
 		while(p2DeseaEntrar == 1)
 		{
 			p1DeseaEntrar = 0;
-			sleep(3);
+			for(int i = 0; i < 1000; i++)
+			{}
 			p1DeseaEntrar = 1;
 		};
 		//seccion critica uno
@@ -46,7 +47,6 @@ void processA(...)
 		cprintf("soy proceso A");
 		p1DeseaEntrar = 0;
 		//Otras tareas uno
-
 	};
 }
 
@@ -59,7 +59,8 @@ void processB(...)
 		while(p1DeseaEntrar == 1)
 		{
 			p2DeseaEntrar = 0;
-			sleep(3);
+			for(int i = 0; i < 1000; i++)
+			{}
 			p2DeseaEntrar = 1;
 		};
 		//seccion critica dos

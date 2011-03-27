@@ -19,7 +19,7 @@ struct process{
 
 /*Variables globales*/
 process pcb[2];
-const int quantum = 5;
+const int quantum = 4;
 int indexProcess = 0;
 int stackPointerAux;
 int stackPointer;
@@ -33,14 +33,13 @@ void processA(...)
 {
 	while(1)
 	{
-
 		//tareas previas uno
 		p1DeseaEntrar = 1;
 		while(p2DeseaEntrar == 1)
 		{};
 		//seccion critica
 		gotoxy(2,2);
-		cprintf("soy proceso A");
+		cprintf("proceso A");
 		p1DeseaEntrar = 0;
 		//otras tareas
 	};
@@ -56,7 +55,7 @@ void processB(...)
 		{};
 		//Seccion critica dos
 		gotoxy(2,4);
-		cprintf("soy proceso B");
+		cprintf("proceso b");
 		p2DeseaEntrar = 0;
 		//otras tareas
 	};
