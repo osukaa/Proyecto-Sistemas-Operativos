@@ -155,32 +155,48 @@ void interrupt myTimer(...)
         else
         {
                 //Salva el SP del proceso que se quedo sin quantum
-                asm mov  stackPointer, SP
-                pcb[indexProcess].stcPtr = stackPointer;
-                if (pcb[indexProcess].status == 1)
-                {
-                        pcb[indexProcess].status = 2;
-                }
-                indexAux = indexProcess;
-                indexProcess++;
-                indexProcess = indexProcess % 2;
-                if (pcb[indexProcess].status != 2)
-                {
-                        indexProcess++;
-                        indexProcess = indexProcess % 2;
-                }
-                //Guarda el quantum del nuevo proceso.
-                quantumProcess = pcb[indexProcess].quantum;
+				asm mov  stackPointer, SP
+				pcb[indexProcess].stcPtr = stackPointer;
+				if (pcb[indexProcess].status == 1)
+				{
+					pcb[indexProcess].status = 2;
+				}
+				//copia el valor que posee el quantum del proceso actual
+				int q = pcb[indexProcess].quantum;
+				if (q > 20)
+				{ 
+					//Si el quantum del proceso es mayor a 20 reinicia el quantum en su valor original
+					q = quantum;
+				}
+				else
+				{
+					/*Si el quantum del proceso actual no es mayor a 20 le aumenta uno para que a la siguiente ejecución
+					tenga un tick de reloj más*/
+					q++;
+				}
+				//Asigna el nuevo quantum al proceso.
+				pcb[indexProcess].quantum = q;
+				//Cambio de proceso.
+				indexAux = indexProcess;
+				indexProcess++;
+				indexProcess = indexProcess % 2;
+				if (pcb[indexProcess].status != 2)
+				{
+					indexProcess++;
+					indexProcess = indexProcess % 2;
+				}
+				//Guarda el quantum del nuevo proceso.
+				quantumProcess = pcb[indexProcess].quantum;
 
-                //revisa que no se repita el proceso que se acaba de quedar sin quantum
-                if (indexAux != indexProcess)
-                {
-                        //Le indica que el nuevo proceso va estar en estado ejecutado.
-                        pcb[indexProcess].status = 1;
-                        stackPointer = pcb[indexProcess].stcPtr;
-                        //Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
-                        asm mov sp,stackPointer
-                }
+				//revisa que no se repita el proceso que se acaba de quedar sin quantum
+				if (indexAux != indexProcess)
+				{
+					//Le indica que el nuevo proceso va estar en estado ejecutado.
+					pcb[indexProcess].status = 1;
+					stackPointer = pcb[indexProcess].stcPtr;
+					//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
+					asm mov sp,stackPointer
+				}
         }
         enable();               //Activa las dem?s interrupciones
 }
