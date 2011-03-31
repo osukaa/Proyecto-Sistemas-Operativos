@@ -21,9 +21,9 @@ struct process{
 typedef int semaforo;
 
 /*Variables globales*/
-const int N = 10;
+const int N = 5;
 const int quantum = 4;
-process pcb[2];
+process pcb[4];
 int indexProcess = 0;
 int stackPointerAux;
 int stackPointer;
@@ -48,7 +48,7 @@ void wait(semaforo *s)
 	}
 	else
 	{
-		bloqueoforzado = 1;
+		pcb[indexProcess].status = 3;
 		(*myTimer)();
 	}
 }
@@ -75,25 +75,32 @@ void signal(semaforo *s)
 	}
 }
 
-void producir_elemento(int *elemento)
+void producir_elemento(int *elemento, int aux)
 {
+	disable();
 	*elemento = (*elemento + 1) % N;
-	cprintf("producido %d ",*elemento);
+	//gotoxy(0, j);
+	printf("\nproducido %d en pos: %d por %d|",*elemento,j,aux);
 	delay(1000);
+	enable();
 }
 
-void consumir_elemento(int *elemento)
+void consumir_elemento(int *elemento, int aux)
 {
-	cprintf("consumido %d ",*elemento);
+	disable();
+	//gotoxy(70, i);
+	printf("\n\tconsumido %d en pos: %d por %d|",*elemento,i-1,aux);
+	delay(1000);
+	enable();
 }
 
 /*Procesos a controlar*/
-void productor(...)
+void productorA(...)
 {
 	int elemento = 0;
 	while(1)
 	{
-		producir_elemento(&elemento);
+		producir_elemento(&elemento,1);
 		wait(&vacio);
 		wait(&mutex);
 			buffer[j] = elemento;
@@ -103,9 +110,9 @@ void productor(...)
 	}
 }
 
-void consumidor(...)
+void consumidorA(...)
 {
-	int elemento = 0;
+	int elemento = 1;
 	while(1)
 	{
 		wait(&lleno);
@@ -114,34 +121,77 @@ void consumidor(...)
 			i = (i + 1) % N;
 		signal(&mutex);
 		signal(&vacio);
-		consumir_elemento(&elemento);
+		consumir_elemento(&elemento,1);
 	}
 }
 
+void productorB(...)
+{
+	int elemento = 0;
+	while(1)
+	{
+		producir_elemento(&elemento,2);
+		wait(&vacio);
+		wait(&mutex);
+			buffer[j] = elemento;
+			j = (j + 1) % N;
+		signal(&mutex);
+		signal(&lleno);
+	}
+}
+
+void consumidorB(...)
+{
+	int elemento = 1;
+	while(1)
+	{
+		wait(&lleno);
+		wait(&mutex);
+			elemento = buffer[i];
+			i = (i + 1) % N;
+		signal(&mutex);
+		signal(&vacio);
+		consumir_elemento(&elemento,2);
+	}
+}
 /*inicializar el pcb*/
 void initPCB(...)
+
 {
+
 	//Inicializa el primer nodo del PCB
-	pcb[0].offset = FP_OFF(productor);
+	pcb[0].offset = FP_OFF(productorA);
 	pcb[0].quantum = quantum;
 	pcb[0].id = 'A';
 	pcb[0].status = 1;
 	pcb[0].stcPtr = 0;
-	
+
 	//Inicializa el segundo nodo del PCB
-	pcb[1].offset = FP_OFF(consumidor);
+	pcb[1].offset = FP_OFF(productorB);
 	pcb[1].quantum = quantum;
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
-	
+
+	//Inicializa el tercer nodo del PCB
+	pcb[2].offset = FP_OFF(consumidorA);
+	pcb[2].quantum = quantum;
+	pcb[2].id = 'C';
+	pcb[2].status = 2;
+
+	//Inicializa el cuarto nodo del PCB
+	pcb[3].offset = FP_OFF(consumidorB);
+	pcb[3].quantum = quantum;
+	pcb[3].id = 'D';
+	pcb[3].status = 2;
+
 	//Guarda el SP de nuestro programa
 	asm mov stackPointer,sp
 	stackPointerAux = stackPointer;
-	
+
 	//Realiza un corrimiento en la pila para el primer proceso
 	stackPointerAux = stackPointerAux - 512;
 	indexOffset = pcb[1].offset; //Direccion del proceso i
-	
+
 	//Guarda todo el contexto del proceso 1
 	asm {
 		mov SP, stackPointerAux
@@ -160,13 +210,66 @@ void initPCB(...)
 		mov stackPointerAux, SP
 		mov SP, stackPointer
 	};
+
 	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
 	pcb[1].stcPtr = stackPointerAux;
-	
+
+	//Realiza un corrimiento en la pila para el segundo proceso
+	stackPointerAux = stackPointerAux - 1024;
+	indexOffset = pcb[2].offset;
+
+	//Guarda todo el contexto del proceso 2
+	asm {
+		mov sp,stackPointerAux
+		pushf
+		push cs
+		push indexOffset
+		push ax
+		push bx
+		push cx
+		push dx
+		push es
+		push ds
+		push si
+		push di
+		push bp
+		mov stackPointerAux, SP
+		mov SP, stackPointer
+	};
+
+	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
+	pcb[2].stcPtr = stackPointerAux;
+
+	//Realiza un corrimiento en la pila para el tercer proceso
+
+	stackPointerAux = stackPointerAux - 1536;
+	indexOffset = pcb[3].offset;
+
+	//Guarda todo el contexto del proceso 3
+	asm {
+		mov sp,stackPointerAux
+		pushf
+		push cs
+		push indexOffset
+		push ax
+		push bx
+		push cx
+		push dx
+		push es
+		push ds
+		push si
+		push di
+		push bp
+		mov stackPointerAux, SP
+		mov SP, stackPointer
+	};
+
+	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
+	pcb[3].stcPtr = stackPointerAux;
 	indexProcess = 0;
+
 	quantumProcess =pcb[indexProcess].quantum;
 }
-
 /*Procemiento que reemplaza la interrupcion del timer con nuestro
 codigo fuente.*/
 void main()
@@ -174,9 +277,8 @@ void main()
 	clrscr();
 	initPCB();
 	prev=getvect(8);	//Guarda la interrupci¢n antigua del timer
-	setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
-	actualProcess = 1;
-	productor();
+	//setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
+	productorA();
 	clrscr();
 	while(1)
 	{}
@@ -193,7 +295,7 @@ void interrupt myTimer(...)
 		setvect(8,prev);
 		exit(0);
 	}
-	if (quantumProcess > 0 && bloqueoforzado == 0)
+	if (quantumProcess > 0 && pcb[indexProcess].status == 1)
 	{
 		//Si el proceso aun  tiene quantum lo disminuye.
 		quantumProcess--;
@@ -206,23 +308,16 @@ void interrupt myTimer(...)
 		pcb[indexProcess].stcPtr = stackPointer;
 		if (pcb[indexProcess].status == 1)
 		{
-			if (bloqueoforzado == 1)
-			{
-				pcb[indexProcess].status = 3;
-			}
-			else
-			{
-				pcb[indexProcess].status = 2;
-			}
+			pcb[indexProcess].status = 2;
 		}
 		//Cambio de proceso.
 		indexAux = indexProcess;
 		indexProcess++;
-		indexProcess = indexProcess % 2;
+		indexProcess = indexProcess % 4;
 		if (pcb[indexProcess].status == 3)
 		{
 			indexProcess++;
-			indexProcess = indexProcess % 2;
+			indexProcess = indexProcess % 4;
 		}
 		//Guarda el quantum del nuevo proceso.
 		quantumProcess = pcb[indexProcess].quantum;
