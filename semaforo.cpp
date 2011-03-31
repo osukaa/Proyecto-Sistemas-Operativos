@@ -12,6 +12,7 @@ void interrupt (*prev)(...);
 struct process{
 	char id;
 	int quantum;
+	//1 ejecucion, 2 listo, 3 bloqueado
 	int status;
 	int stcPtr;
 	int offset;
@@ -20,7 +21,7 @@ struct process{
 typedef int semaforo;
 
 /*Variables globales*/
-const int N = 100;
+const int N = 10;
 const int quantum = 4;
 process pcb[2];
 int indexProcess = 0;
@@ -32,7 +33,7 @@ int quantumProcess;
 int actualProcess;
 int bloqueoforzado;
 //variables para el uso del productor-consumidor
-int buffer[N]
+int buffer[N];
 int i = 0;
 int j = 0;
 semaforo mutex = 1;
@@ -41,37 +42,49 @@ semaforo lleno = 0;
 
 void wait(semaforo *s)
 {
-	if (s > 0)
+	if (*s > 0)
 	{
-		s = s - 1;
+		*s = *s - 1;
 	}
 	else
 	{
 		bloqueoforzado = 1;
+		(*myTimer)();
 	}
 }
 
 void signal(semaforo *s)
 {
-	if (s <= 0)
+	if (*s <= 0)
 	{
 		//quitar un proceso del pcb y ponerlo en listo
+		int tmp = 0;
+		while (tmp < 5)
+		{
+			if (pcb[tmp].status == 3)
+			{
+				pcb[tmp].status = 2;
+				tmp = 5;
+			}
+			tmp++;
+		}
 	}
 	else
 	{
-		s = s + 1;
+		*s = *s + 1;
 	}
 }
 
 void producir_elemento(int *elemento)
 {
-	elemento = (elemento + 1) % N;
-	cprintf("producido %d",elemento);
+	*elemento = (*elemento + 1) % N;
+	cprintf("producido %d ",*elemento);
+	delay(1000);
 }
 
 void consumir_elemento(int *elemento)
 {
-	cprintf("consumido %d",elemento);
+	cprintf("consumido %d ",*elemento);
 }
 
 /*Procesos a controlar*/
@@ -163,7 +176,7 @@ void main()
 	prev=getvect(8);	//Guarda la interrupciÂ¢n antigua del timer
 	setvect(8,myTimer);	//Inserta con nuestro cÂ¢digo la interrupcion del time
 	actualProcess = 1;
-	processA();
+	productor();
 	clrscr();
 	while(1)
 	{}
@@ -180,25 +193,33 @@ void interrupt myTimer(...)
 		setvect(8,prev);
 		exit(0);
 	}
-	if (quantumProcess > 0 || bloqueoforzado == 0)
+	if (quantumProcess > 0 && bloqueoforzado == 0)
 	{
 		//Si el proceso aun  tiene quantum lo disminuye.
 		quantumProcess--;
 	}
 	else
 	{
+		bloqueoforzado = 0;
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov  stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
 		if (pcb[indexProcess].status == 1)
 		{
-			pcb[indexProcess].status = 2;
+			if (bloqueoforzado == 1)
+			{
+				pcb[indexProcess].status = 3;
+			}
+			else
+			{
+				pcb[indexProcess].status = 2;
+			}
 		}
 		//Cambio de proceso.
 		indexAux = indexProcess;
 		indexProcess++;
 		indexProcess = indexProcess % 2;
-		if (pcb[indexProcess].status != 2)
+		if (pcb[indexProcess].status == 3)
 		{
 			indexProcess++;
 			indexProcess = indexProcess % 2;
@@ -216,5 +237,5 @@ void interrupt myTimer(...)
 			asm mov sp,stackPointer
 		}
 	}
-	enable();               //Activa las demás interrupciones
+	enable(); //Activa las demás interrupciones
 }
