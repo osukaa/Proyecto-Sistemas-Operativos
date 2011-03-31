@@ -30,7 +30,7 @@ int indexOffset;
 int indexAux;
 int quantumProcess;
 int actualProcess;
-
+int bloqueoforzado;
 //variables para el uso del productor-consumidor
 int buffer[N]
 int i = 0;
@@ -41,13 +41,13 @@ semaforo lleno = 0;
 
 void wait(semaforo *s)
 {
-	if (s.contador > 0)
+	if (s > 0)
 	{
 		s = s - 1;
 	}
 	else
 	{
-		//bloquear proceso
+		bloqueoforzado = 1;
 	}
 }
 
@@ -109,14 +109,14 @@ void consumidor(...)
 void initPCB(...)
 {
 	//Inicializa el primer nodo del PCB
-	pcb[0].offset = FP_OFF(processA);
+	pcb[0].offset = FP_OFF(productor);
 	pcb[0].quantum = quantum;
 	pcb[0].id = 'A';
 	pcb[0].status = 1;
 	pcb[0].stcPtr = 0;
 	
 	//Inicializa el segundo nodo del PCB
-	pcb[1].offset = FP_OFF(processB);
+	pcb[1].offset = FP_OFF(consumidor);
 	pcb[1].quantum = quantum;
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
@@ -180,7 +180,7 @@ void interrupt myTimer(...)
 		setvect(8,prev);
 		exit(0);
 	}
-	if (quantumProcess > 0)
+	if (quantumProcess > 0 || bloqueoforzado == 0)
 	{
 		//Si el proceso aun  tiene quantum lo disminuye.
 		quantumProcess--;
