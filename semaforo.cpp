@@ -22,7 +22,7 @@ typedef int semaforo;
 
 /*Variables globales*/
 const int N = 5;
-const int quantum = 4;
+const int quantum = 5;
 process pcb[4];
 int indexProcess = 0;
 int stackPointerAux;
@@ -31,7 +31,6 @@ int indexOffset;
 int indexAux;
 int quantumProcess;
 int actualProcess;
-int bloqueoforzado;
 //variables para el uso del productor-consumidor
 int buffer[N];
 int i = 0;
@@ -39,6 +38,8 @@ int j = 0;
 semaforo mutex = 1;
 semaforo vacio = N;
 semaforo lleno = 0;
+semaforo mutexc = 1;
+semaforo mutexp = 1;
 
 void wait(semaforo *s)
 {
@@ -102,9 +103,11 @@ void productorA(...)
 	{
 		producir_elemento(&elemento,1);
 		wait(&vacio);
+		wait(&mutexp);
 		wait(&mutex);
 			buffer[j] = elemento;
 			j = (j + 1) % N;
+		signal(&mutexp);
 		signal(&mutex);
 		signal(&lleno);
 	}
@@ -116,9 +119,11 @@ void consumidorA(...)
 	while(1)
 	{
 		wait(&lleno);
+		wait(&mutexc);
 		wait(&mutex);
 			elemento = buffer[i];
 			i = (i + 1) % N;
+		signal(&mutexc);
 		signal(&mutex);
 		signal(&vacio);
 		consumir_elemento(&elemento,1);
@@ -132,9 +137,11 @@ void productorB(...)
 	{
 		producir_elemento(&elemento,2);
 		wait(&vacio);
+		wait(&mutexp);
 		wait(&mutex);
 			buffer[j] = elemento;
 			j = (j + 1) % N;
+		signal(&mutexp);
 		signal(&mutex);
 		signal(&lleno);
 	}
@@ -146,9 +153,11 @@ void consumidorB(...)
 	while(1)
 	{
 		wait(&lleno);
+		wait(&mutexc);
 		wait(&mutex);
 			elemento = buffer[i];
 			i = (i + 1) % N;
+		signal(&mutexc);
 		signal(&mutex);
 		signal(&vacio);
 		consumir_elemento(&elemento,2);
@@ -302,7 +311,6 @@ void interrupt myTimer(...)
 	}
 	else
 	{
-		bloqueoforzado = 0;
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov  stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
