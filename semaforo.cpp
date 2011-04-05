@@ -21,9 +21,10 @@ struct process{
 typedef int semaforo;
 
 /*Variables globales*/
-const int N = 5;
+const int N = 20;
+const int M = 4;
 const int quantum = 5;
-process pcb[4];
+process pcb[M];
 int indexProcess = 0;
 int stackPointerAux;
 int stackPointer;
@@ -38,8 +39,8 @@ int j = 0;
 semaforo mutex = 1;
 semaforo vacio = N;
 semaforo lleno = 0;
-semaforo mutexc = 1;
-semaforo mutexp = 1;
+//semaforo mutexc = 1;
+//semaforo mutexp = 1;
 
 void wait(semaforo *s)
 {
@@ -56,23 +57,21 @@ void wait(semaforo *s)
 
 void signal(semaforo *s)
 {
-	if (*s <= 0)
+	*s=*s+1;
+	//if (*s > N ) {*s = 1;}
+	//quitar un proceso del pcb y ponerlo en listo
+	int tmp = (indexProcess+1) % M;
+	int i = 0;
+	int v = 0;
+	while (i == 0 && v < 4)
 	{
-		//quitar un proceso del pcb y ponerlo en listo
-		int tmp = 0;
-		while (tmp < 5)
+		if (pcb[tmp].status == 3)
 		{
-			if (pcb[tmp].status == 3)
-			{
-				pcb[tmp].status = 2;
-				tmp = 5;
-			}
-			tmp++;
+			pcb[tmp].status = 2;
+			i = 1;
 		}
-	}
-	else
-	{
-		*s = *s + 1;
+		tmp = (tmp + 1) % M;
+		v++;
 	}
 }
 
@@ -81,7 +80,7 @@ void producir_elemento(int *elemento, int aux)
 	disable();
 	*elemento = (*elemento + 1) % N;
 	//gotoxy(0, j);
-	printf("\nproducido %d en pos: %d por %d|",*elemento,j,aux);
+	printf("\nproductor %d inserto %d en pos %d|",aux,*elemento,j);
 	delay(1000);
 	enable();
 }
@@ -90,7 +89,7 @@ void consumir_elemento(int *elemento, int aux)
 {
 	disable();
 	//gotoxy(70, i);
-	printf("\n\tconsumido %d en pos: %d por %d|",*elemento,i-1,aux);
+	printf("\nconsumidor %d extrajo %d en pos %d|",aux,*elemento,i);
 	delay(1000);
 	enable();
 }
@@ -101,15 +100,17 @@ void productorA(...)
 	int elemento = 0;
 	while(1)
 	{
-		producir_elemento(&elemento,1);
-		wait(&vacio);
-		wait(&mutexp);
+		//wait(&mutexp);
 		wait(&mutex);
+		wait(&vacio);
+		disable();
+			producir_elemento(&elemento,1);
 			buffer[j] = elemento;
 			j = (j + 1) % N;
-		signal(&mutexp);
-		signal(&mutex);
 		signal(&lleno);
+		signal(&mutex);
+		enable();
+		//signal(&mutexp);
 	}
 }
 
@@ -118,15 +119,18 @@ void consumidorA(...)
 	int elemento = 1;
 	while(1)
 	{
-		wait(&lleno);
-		wait(&mutexc);
+		//wait(&mutexc);
 		wait(&mutex);
+		wait(&lleno);
+		disable();
 			elemento = buffer[i];
+			consumir_elemento(&elemento,1);
 			i = (i + 1) % N;
-		signal(&mutexc);
-		signal(&mutex);
 		signal(&vacio);
-		consumir_elemento(&elemento,1);
+		signal(&mutex);
+		enable();
+		//signal(&mutexc);
+
 	}
 }
 
@@ -135,15 +139,17 @@ void productorB(...)
 	int elemento = 0;
 	while(1)
 	{
-		producir_elemento(&elemento,2);
-		wait(&vacio);
-		wait(&mutexp);
+		//wait(&mutexp);
 		wait(&mutex);
+		wait(&vacio);
+		disable();
 			buffer[j] = elemento;
+			producir_elemento(&elemento,2);
 			j = (j + 1) % N;
-		signal(&mutexp);
-		signal(&mutex);
 		signal(&lleno);
+		signal(&mutex);
+		enable();
+		//signal(&mutexp);
 	}
 }
 
@@ -152,15 +158,17 @@ void consumidorB(...)
 	int elemento = 1;
 	while(1)
 	{
-		wait(&lleno);
-		wait(&mutexc);
+		//wait(&mutexc);
 		wait(&mutex);
+		wait(&lleno);
+		disable();
 			elemento = buffer[i];
+			consumir_elemento(&elemento,2);
 			i = (i + 1) % N;
-		signal(&mutexc);
-		signal(&mutex);
 		signal(&vacio);
-		consumir_elemento(&elemento,2);
+		signal(&mutex);
+		enable();
+		//signal(&mutexc);
 	}
 }
 /*inicializar el pcb*/
@@ -286,7 +294,7 @@ void main()
 	clrscr();
 	initPCB();
 	prev=getvect(8);	//Guarda la interrupci¢n antigua del timer
-	//setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
+	setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
 	productorA();
 	clrscr();
 	while(1)
@@ -311,8 +319,12 @@ void interrupt myTimer(...)
 	}
 	else
 	{
+		/*if(mutex == 0 && pcb[indexProcess].status==3)
+		{
+			mutex = 1;
+		}*/
 		//Salva el SP del proceso que se quedo sin quantum
-		asm mov  stackPointer, SP
+		asm mov stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
 		if (pcb[indexProcess].status == 1)
 		{
