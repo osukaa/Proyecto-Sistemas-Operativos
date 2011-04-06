@@ -19,9 +19,8 @@ struct process{
 };
 
 typedef int semaforo;
-
 /*Variables globales*/
-const int N = 20;
+const int N = 3;
 const int M = 4;
 const int quantum = 5;
 process pcb[M];
@@ -36,6 +35,7 @@ int actualProcess;
 int buffer[N];
 int i = 0;
 int j = 0;
+int f = 1;
 semaforo mutex = 1;
 semaforo vacio = N;
 semaforo lleno = 0;
@@ -50,15 +50,15 @@ void wait(semaforo *s)
 	}
 	else
 	{
+		f = 1;
 		pcb[indexProcess].status = 3;
-		(*myTimer)();
+		while ( f == 1 ) {};
 	}
 }
 
 void signal(semaforo *s)
 {
 	*s=*s+1;
-	//if (*s > N ) {*s = 1;}
 	//quitar un proceso del pcb y ponerlo en listo
 	int tmp = (indexProcess+1) % M;
 	int i = 0;
@@ -101,14 +101,14 @@ void productorA(...)
 	while(1)
 	{
 		//wait(&mutexp);
-		wait(&mutex);
 		wait(&vacio);
+		wait(&mutex);
 		disable();
 			producir_elemento(&elemento,1);
 			buffer[j] = elemento;
 			j = (j + 1) % N;
-		signal(&lleno);
 		signal(&mutex);
+		signal(&lleno);
 		enable();
 		//signal(&mutexp);
 	}
@@ -120,14 +120,14 @@ void consumidorA(...)
 	while(1)
 	{
 		//wait(&mutexc);
-		wait(&mutex);
 		wait(&lleno);
+		wait(&mutex);
 		disable();
 			elemento = buffer[i];
 			consumir_elemento(&elemento,1);
 			i = (i + 1) % N;
-		signal(&vacio);
 		signal(&mutex);
+		signal(&vacio);
 		enable();
 		//signal(&mutexc);
 
@@ -140,14 +140,14 @@ void productorB(...)
 	while(1)
 	{
 		//wait(&mutexp);
-		wait(&mutex);
 		wait(&vacio);
+		wait(&mutex);
 		disable();
 			buffer[j] = elemento;
 			producir_elemento(&elemento,2);
 			j = (j + 1) % N;
-		signal(&lleno);
 		signal(&mutex);
+		signal(&lleno);
 		enable();
 		//signal(&mutexp);
 	}
@@ -159,14 +159,14 @@ void consumidorB(...)
 	while(1)
 	{
 		//wait(&mutexc);
-		wait(&mutex);
 		wait(&lleno);
+		wait(&mutex);
 		disable();
 			elemento = buffer[i];
 			consumir_elemento(&elemento,2);
 			i = (i + 1) % N;
-		signal(&vacio);
 		signal(&mutex);
+		signal(&vacio);
 		enable();
 		//signal(&mutexc);
 	}
@@ -184,13 +184,13 @@ void initPCB(...)
 	pcb[0].stcPtr = 0;
 
 	//Inicializa el segundo nodo del PCB
-	pcb[1].offset = FP_OFF(productorB);
+	pcb[1].offset = FP_OFF(consumidorA);
 	pcb[1].quantum = quantum;
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
 
 	//Inicializa el tercer nodo del PCB
-	pcb[2].offset = FP_OFF(consumidorA);
+	pcb[2].offset = FP_OFF(productorB);
 	pcb[2].quantum = quantum;
 	pcb[2].id = 'C';
 	pcb[2].status = 2;
@@ -312,45 +312,17 @@ void interrupt myTimer(...)
 		setvect(8,prev);
 		exit(0);
 	}
-	if (quantumProcess > 0 && pcb[indexProcess].status == 1)
+	if (pcb[indexProcess].status == 3)
 	{
-		//Si el proceso aun  tiene quantum lo disminuye.
-		quantumProcess--;
-	}
-	else
-	{
-		/*if(mutex == 0 && pcb[indexProcess].status==3)
-		{
-			mutex = 1;
-		}*/
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
-		if (pcb[indexProcess].status == 1)
-		{
-			pcb[indexProcess].status = 2;
-		}
+		indexProcess = (indexProcess + 1) % M;
+		stackPointer = pcb[indexProcess].stcPtr;
+		//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
+		asm mov sp,stackPointer
 		//Cambio de proceso.
-		indexAux = indexProcess;
-		indexProcess++;
-		indexProcess = indexProcess % 4;
-		if (pcb[indexProcess].status == 3)
-		{
-			indexProcess++;
-			indexProcess = indexProcess % 4;
-		}
-		//Guarda el quantum del nuevo proceso.
-		quantumProcess = pcb[indexProcess].quantum;
-
-		//revisa que no se repita el proceso que se acaba de quedar sin quantum
-		if (indexAux != indexProcess)
-		{
-			//Le indica que el nuevo proceso va estar en estado ejecutado.
-			pcb[indexProcess].status = 1;
-			stackPointer = pcb[indexProcess].stcPtr;
-			//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
-			asm mov sp,stackPointer
-		}
+		f = 0;
 	}
 	enable(); //Activa las demás interrupciones
 }
