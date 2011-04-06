@@ -20,7 +20,7 @@ struct process{
 
 typedef int semaforo;
 /*Variables globales*/
-const int N = 3;
+const int N = 5;
 const int M = 4;
 const int quantum = 5;
 process pcb[M];
@@ -53,12 +53,34 @@ void wait(semaforo *s)
 		f = 1;
 		pcb[indexProcess].status = 3;
 		while ( f == 1 ) {};
+		wait(s);
 	}
 }
 
-void signal(semaforo *s)
+void signal(semaforo *s,int d)
 {
-	*s=*s+1;
+	f = 1;
+	if (mutex < 1 && d == 1)
+	{
+		*s = *s + 1;
+		f = 0;
+	}
+	else if (vacio < N && d == 2)
+	{
+		*s = *s + 1;
+		f = 0;
+	}
+	else if (lleno < N && d == 3)
+	{
+		*s = *s + 1;
+		f = 0;
+	}
+	else
+	{
+		*s = 0;
+		pcb[indexProcess].status = 3;
+	}
+	while ( f == 1){};
 	//quitar un proceso del pcb y ponerlo en listo
 	int tmp = (indexProcess+1) % M;
 	int i = 0;
@@ -107,8 +129,8 @@ void productorA(...)
 			producir_elemento(&elemento,1);
 			buffer[j] = elemento;
 			j = (j + 1) % N;
-		signal(&mutex);
-		signal(&lleno);
+		signal(&mutex,1);
+		signal(&lleno,3);
 		enable();
 		//signal(&mutexp);
 	}
@@ -126,8 +148,8 @@ void consumidorA(...)
 			elemento = buffer[i];
 			consumir_elemento(&elemento,1);
 			i = (i + 1) % N;
-		signal(&mutex);
-		signal(&vacio);
+		signal(&mutex,1);
+		signal(&vacio,2);
 		enable();
 		//signal(&mutexc);
 
@@ -146,8 +168,8 @@ void productorB(...)
 			buffer[j] = elemento;
 			producir_elemento(&elemento,2);
 			j = (j + 1) % N;
-		signal(&mutex);
-		signal(&lleno);
+		signal(&mutex,1);
+		signal(&lleno,3);
 		enable();
 		//signal(&mutexp);
 	}
@@ -165,8 +187,8 @@ void consumidorB(...)
 			elemento = buffer[i];
 			consumir_elemento(&elemento,2);
 			i = (i + 1) % N;
-		signal(&mutex);
-		signal(&vacio);
+		signal(&mutex,1);
+		signal(&vacio,2);
 		enable();
 		//signal(&mutexc);
 	}
