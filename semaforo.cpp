@@ -20,7 +20,7 @@ struct process{
 
 typedef int semaforo;
 /*Variables globales*/
-const int N = 5;
+const int N = 10;
 const int M = 4;
 const int quantum = 5;
 process pcb[M];
@@ -200,26 +200,26 @@ void initPCB(...)
 
 	//Inicializa el primer nodo del PCB
 	pcb[0].offset = FP_OFF(productorA);
-	pcb[0].quantum = quantum;
+	pcb[0].quantum = quantum + quantum;
 	pcb[0].id = 'A';
 	pcb[0].status = 1;
 	pcb[0].stcPtr = 0;
 
 	//Inicializa el segundo nodo del PCB
 	pcb[1].offset = FP_OFF(consumidorA);
-	pcb[1].quantum = quantum + quantum;
+	pcb[1].quantum = quantum;
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
 
 	//Inicializa el tercer nodo del PCB
 	pcb[2].offset = FP_OFF(productorB);
-	pcb[2].quantum = quantum;
+	pcb[2].quantum = quantum + quantum;
 	pcb[2].id = 'C';
 	pcb[2].status = 2;
 
 	//Inicializa el cuarto nodo del PCB
 	pcb[3].offset = FP_OFF(consumidorB);
-	pcb[3].quantum = quantum + quantum;
+	pcb[3].quantum = quantum;
 	pcb[3].id = 'D';
 	pcb[3].status = 2;
 
@@ -342,7 +342,7 @@ void interrupt myTimer(...)
 	{
 		if ( pcb[indexProcess].status == 1)
 		{
-			pcb[indexProcess].status == 2;
+			pcb[indexProcess].status = 2;
 		}
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov stackPointer, SP
@@ -350,10 +350,12 @@ void interrupt myTimer(...)
 		indexProcess = (indexProcess + 1) % M;
 		stackPointer = pcb[indexProcess].stcPtr;
 		quantumProcess = pcb[indexProcess].quantum;
+		pcb[indexProcess].status = 1;
 		//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
 		asm mov sp,stackPointer
 		//Cambio de proceso.
 		f = 0;
+		mutex = 1;
 	}
 	enable(); //Activa las demás interrupciones
 }
