@@ -207,7 +207,7 @@ void initPCB(...)
 
 	//Inicializa el segundo nodo del PCB
 	pcb[1].offset = FP_OFF(consumidorA);
-	pcb[1].quantum = quantum;
+	pcb[1].quantum = quantum + quantum;
 	pcb[1].id = 'B';
 	pcb[1].status = 2;
 
@@ -219,7 +219,7 @@ void initPCB(...)
 
 	//Inicializa el cuarto nodo del PCB
 	pcb[3].offset = FP_OFF(consumidorB);
-	pcb[3].quantum = quantum;
+	pcb[3].quantum = quantum + quantum;
 	pcb[3].id = 'D';
 	pcb[3].status = 2;
 
@@ -334,13 +334,22 @@ void interrupt myTimer(...)
 		setvect(8,prev);
 		exit(0);
 	}
-	if (pcb[indexProcess].status == 3)
+	if (quantumProcess > 0 && pcb[indexProcess].status == 1)
 	{
+		quantumProcess--;
+	}
+	else
+	{
+		if ( pcb[indexProcess].status == 1)
+		{
+			pcb[indexProcess].status == 2;
+		}
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
 		indexProcess = (indexProcess + 1) % M;
 		stackPointer = pcb[indexProcess].stcPtr;
+		quantumProcess = pcb[indexProcess].quantum;
 		//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
 		asm mov sp,stackPointer
 		//Cambio de proceso.
