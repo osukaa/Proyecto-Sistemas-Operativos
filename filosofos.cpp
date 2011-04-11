@@ -4,10 +4,11 @@
 #include<stdio.h>
 #include<conio.h>
 #include<iostream.h>
-#define izq = (i - 1) % N
-#define der = (i + 1) % N
+//#define izq = (i - 1) % N
+//#define der = (i + 1) % N
 
 const int N = 5;
+const int quantum = 1;
 
 void interrupt myTimer(...);
 void interrupt (*prev)(...);
@@ -29,6 +30,7 @@ int indexOffset;
 int indexAux;
 int quantumProcess;
 int actualProcess;
+int f;
 typedef int semaforo;
 enum { pensando, hambriento, comiendo };
 
@@ -55,7 +57,7 @@ void signal(semaforo *s)
 {
 	*s = *s + 1;
 	//quitar un proceso del pcb y ponerlo en listo
-	int tmp = (indexProcess+1) % M;
+	int tmp = (indexProcess+1) % N;
 	int i = 0;
 	int v = 0;
 	while (i == 0 && v < 4)
@@ -65,14 +67,19 @@ void signal(semaforo *s)
 			pcb[tmp].status = 2;
 			i = 1;
 		}
-		tmp = (tmp + 1) % M;
+		tmp = (tmp + 1) % N;
 		v++;
 	}
 }
 
 void prueba(int i)
 {
-	if(estado[i] == hambriento && estado[izq] != comiendo && estado[der] != comiendo)
+	int der = (i + 1) % N;
+	int izq = (i - 1) % N;
+	int d = estado[der];
+	int iz = estado[izq];
+	int e = estado[i];
+	if((e == hambriento) && (iz != comiendo) && (d != comiendo))
 	{
 		estado[i] = comiendo;
 		signal(&s[i]);
@@ -81,29 +88,45 @@ void prueba(int i)
 
 void tomar_tenedores(int i)
 {
-	wait(&exmut);
+	wait(&mutex);
 	estado[i] = hambriento;
 	prueba(i);
-	signal(&exmut);
+	signal(&mutex);
 	wait(&s[i]);
 }
 
 void dejar_tenedores(int i)
 {
-	wait(&exmut);
+	int der = (i + 1) % N;
+	int izq = (i - 1) % N;
+	wait(&mutex);
 	estado[i] = pensando;
 	prueba(izq);
 	prueba(der);
-	signal(&exmut);
+	signal(&mutex);
+}
+
+void pensar(int i)
+{
+	printf("\nEl fisolofo %d esta pensando", i);
+	//delay(1000);
+}
+
+
+
+void comer(int i)
+{
+	printf("\nEl filosofo %d esta comiendo", i);
+	//delay(1000);
 }
 
 void filosofo1()
 {
 	while(1)
 	{
-		pensar();
+		pensar(0);
 		tomar_tenedores(0);
-		comer();
+		comer(0);
 		dejar_tenedores(0);
 	}
 }
@@ -111,9 +134,9 @@ void filosofo2()
 {
 	while(1)
 	{
-		pensar();
+		pensar(1);
 		tomar_tenedores(1);
-		comer();
+		comer(1);
 		dejar_tenedores(1);
 	}
 }
@@ -121,9 +144,9 @@ void filosofo3()
 {
 	while(1)
 	{
-		pensar();
+		pensar(2);
 		tomar_tenedores(2);
-		comer();
+		comer(2);
 		dejar_tenedores(2);
 	}
 }
@@ -131,9 +154,9 @@ void filosofo4()
 {
 	while(1)
 	{
-		pensar();
+		pensar(3);
 		tomar_tenedores(3);
-		comer();
+		comer(3);
 		dejar_tenedores(3);
 	}
 }
@@ -141,9 +164,9 @@ void filosofo5()
 {
 	while(1)
 	{
-		pensar();
+		pensar(4);
 		tomar_tenedores(4);
-		comer();
+		comer(4);
 		dejar_tenedores(4);
 	}
 }
@@ -283,7 +306,7 @@ void initPCB(...)
 		mov stackPointerAux, SP
 		mov SP, stackPointer
 	};
-	
+
 	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
 	pcb[4].stcPtr = stackPointerAux;
 	indexProcess = 0;
@@ -298,7 +321,7 @@ void main()
 	initPCB();
 	prev=getvect(8);	//Guarda la interrupci¢n antigua del timer
 	setvect(8,myTimer);	//Inserta con nuestro c¢digo la interrupcion del time
-	productorA();
+	filosofo1();
 	clrscr();
 	while(1)
 	{}
@@ -323,18 +346,22 @@ void interrupt myTimer(...)
 	{
 		if ( pcb[indexProcess].status == 1)
 		{
-			pcb[indexProcess].status == 2;
+			pcb[indexProcess].status = 2;
 		}
 		//Salva el SP del proceso que se quedo sin quantum
 		asm mov stackPointer, SP
 		pcb[indexProcess].stcPtr = stackPointer;
-		indexProcess = (indexProcess + 1) % M;
+		indexProcess = (indexProcess + 1) % N;
 		stackPointer = pcb[indexProcess].stcPtr;
 		quantumProcess = pcb[indexProcess].quantum;
+		if(pcb[indexProcess].status == 2)
+		{
+			pcb[indexProcess].status = 1;
+		}
 		//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
 		asm mov sp,stackPointer
 		//Cambio de proceso.
-		f = 0;
+	       //	f = 0;
 	}
 	enable(); //Activa las dem�s interrupciones
 }
