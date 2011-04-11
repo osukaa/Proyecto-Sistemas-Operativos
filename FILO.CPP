@@ -4,14 +4,11 @@
 #include<stdio.h>
 #include<conio.h>
 #include<iostream.h>
-//#define izq = (i - 1) % N
-//#define der = (i + 1) % N
-
-const int N = 5;
-const int quantum = 1;
 
 void interrupt myTimer(...);
 void interrupt (*prev)(...);
+
+typedef int semaforo;
 
 struct process{
 	char id;
@@ -22,6 +19,10 @@ struct process{
 	int offset;
 };
 
+
+/*Variables globales*/
+const int N = 5;
+const int quantum = 5;
 process pcb[N];
 int indexProcess = 0;
 int stackPointerAux;
@@ -30,9 +31,9 @@ int indexOffset;
 int indexAux;
 int quantumProcess;
 int actualProcess;
-int f;
-typedef int semaforo;
-enum { pensando, hambriento, comiendo };
+int f = 0;
+
+enum{pensando, hambriento, comiendo};
 
 int estado[N];
 semaforo mutex = 1;
@@ -55,7 +56,18 @@ void wait(semaforo *s)
 
 void signal(semaforo *s)
 {
-	*s = *s + 1;
+	f = 1;
+	if (*s < 2)
+	{
+		*s = *s + 1;
+		f = 0;
+	}
+	else
+	{
+		*s = 0;
+		pcb[indexProcess].status = 3;
+	}
+	while ( f == 1){};
 	//quitar un proceso del pcb y ponerlo en listo
 	int tmp = (indexProcess+1) % N;
 	int i = 0;
@@ -72,14 +84,16 @@ void signal(semaforo *s)
 	}
 }
 
+void pensar(int i)
+{
+	printf("\nEl filosofo %d esta pensando",i);
+}
+
 void prueba(int i)
 {
 	int der = (i + 1) % N;
 	int izq = (i - 1) % N;
-	int d = estado[der];
-	int iz = estado[izq];
-	int e = estado[i];
-	if((e == hambriento) && (iz != comiendo) && (d != comiendo))
+	if((estado[i] == hambriento) && (estado[izq] != comiendo) && (estado[der] != comiendo))
 	{
 		estado[i] = comiendo;
 		signal(&s[i]);
@@ -106,71 +120,81 @@ void dejar_tenedores(int i)
 	signal(&mutex);
 }
 
-void pensar(int i)
-{
-	printf("\nEl fisolofo %d esta pensando", i);
-	//delay(1000);
-}
-
-
-
-void comer(int i)
-{
-	printf("\nEl filosofo %d esta comiendo", i);
-	//delay(1000);
-}
-
-void filosofo1()
+/*Procesos a controlar*/
+void filosofo1(...)
 {
 	while(1)
 	{
-		pensar(0);
+		delay(100);
+		printf("\nEl filosofo %d esta pensando",1);
+		delay(100);
 		tomar_tenedores(0);
-		comer(0);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",1);
+		delay(100);
 		dejar_tenedores(0);
 	}
 }
-void filosofo2()
+
+void filosofo2(...)
 {
 	while(1)
 	{
-		pensar(1);
+		delay(100);
+		printf("\nEl filosofo %d esta pensando",2);
+		delay(100);
 		tomar_tenedores(1);
-		comer(1);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",2);
+		delay(100);
 		dejar_tenedores(1);
 	}
 }
-void filosofo3()
+
+void filosofo3(...)
 {
 	while(1)
 	{
-		pensar(2);
+		delay(100);
+		printf("\nEl filosofo %d esta pensando",3);
+		delay(100);
 		tomar_tenedores(2);
-		comer(2);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",3);
+		delay(100);
 		dejar_tenedores(2);
 	}
 }
-void filosofo4()
+
+void filosofo4(...)
 {
 	while(1)
 	{
-		pensar(3);
+		delay(100);
+		printf("\nEl filosofo %d esta pensando",4);
+		delay(100);
 		tomar_tenedores(3);
-		comer(3);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",4);
+		delay(100);
 		dejar_tenedores(3);
 	}
 }
-void filosofo5()
+void filosofo5(...)
 {
 	while(1)
 	{
-		pensar(4);
+		delay(100);
+		printf("\nEl filosofo %d esta pensando",5);
+		delay(100);
 		tomar_tenedores(4);
-		comer(4);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",5);
+		delay(100);
 		dejar_tenedores(4);
 	}
 }
-
+/*inicializar el pcb*/
 void initPCB(...)
 
 {
@@ -199,11 +223,12 @@ void initPCB(...)
 	pcb[3].quantum = quantum;
 	pcb[3].id = 'D';
 	pcb[3].status = 2;
-	
-	pcb[3].offset = FP_OFF(filosofo5);
-	pcb[3].quantum = quantum;
-	pcb[3].id = 'E';
-	pcb[3].status = 2;
+
+	//Inicializa el quinto nodo del PCB
+	pcb[4].offset = FP_OFF(filosofo5);
+	pcb[4].quantum = quantum;
+	pcb[4].id = 'D';
+	pcb[4].status = 2;
 
 	//Guarda el SP de nuestro programa
 	asm mov stackPointer,sp
@@ -285,9 +310,14 @@ void initPCB(...)
 		mov SP, stackPointer
 	};
 
+	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
+	pcb[3].stcPtr = stackPointerAux;
+	
+	//Realiza un corrimiento en la pila para el tercer proceso
+
 	stackPointerAux = stackPointerAux - 2048;
 	indexOffset = pcb[4].offset;
-
+	
 	//Guarda todo el contexto del proceso 3
 	asm {
 		mov sp,stackPointerAux
@@ -306,12 +336,10 @@ void initPCB(...)
 		mov stackPointerAux, SP
 		mov SP, stackPointer
 	};
-
-	//Guarda en el PCB el SP donde se encuentran el contexto del proceso
 	pcb[4].stcPtr = stackPointerAux;
 	indexProcess = 0;
 
-	quantumProcess = pcb[indexProcess].quantum;
+	quantumProcess =pcb[indexProcess].quantum;
 }
 /*Procemiento que reemplaza la interrupcion del timer con nuestro
 codigo fuente.*/
@@ -361,7 +389,8 @@ void interrupt myTimer(...)
 		//Mueve el SP a donde esta el contexto del nuevo proceso que va ejecutar
 		asm mov sp,stackPointer
 		//Cambio de proceso.
-	       //	f = 0;
+		f = 0;
+		mutex = 1;
 	}
 	enable(); //Activa las demás interrupciones
 }
