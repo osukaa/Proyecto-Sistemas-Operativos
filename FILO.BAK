@@ -103,10 +103,22 @@ void prueba(int i)
 void tomar_tenedores(int i)
 {
 	wait(&mutex);
+	printf("\nEl filosofo %d esta hambriento", i);
 	estado[i] = hambriento;
 	prueba(i);
 	signal(&mutex);
-	wait(&s[i});
+	wait(&s[i]);
+}
+
+void dejar_tenedores(int i)
+{
+	int der = (i + 1) % N;
+	int izq = (i - 1) % N;
+	wait(&mutex);
+	estado[i] = pensando;
+	prueba(izq);
+	prueba(der);
+	signal(&mutex);
 }
 
 /*Procesos a controlar*/
@@ -118,6 +130,10 @@ void filosofo1(...)
 		printf("\nEl filosofo %d esta pensando",1);
 		delay(100);
 		tomar_tenedores(0);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",1);
+		delay(100);
+		dejar_tenedores(0);
 	}
 }
 
@@ -129,6 +145,10 @@ void filosofo2(...)
 		printf("\nEl filosofo %d esta pensando",2);
 		delay(100);
 		tomar_tenedores(1);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",2);
+		delay(100);
+		dejar_tenedores(1);
 	}
 }
 
@@ -140,6 +160,10 @@ void filosofo3(...)
 		printf("\nEl filosofo %d esta pensando",3);
 		delay(100);
 		tomar_tenedores(2);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",3);
+		delay(100);
+		dejar_tenedores(2);
 	}
 }
 
@@ -151,6 +175,10 @@ void filosofo4(...)
 		printf("\nEl filosofo %d esta pensando",4);
 		delay(100);
 		tomar_tenedores(3);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",4);
+		delay(100);
+		dejar_tenedores(3);
 	}
 }
 void filosofo5(...)
@@ -161,6 +189,10 @@ void filosofo5(...)
 		printf("\nEl filosofo %d esta pensando",5);
 		delay(100);
 		tomar_tenedores(4);
+		delay(100);
+		printf("\nEl filosofo %d esta comiendo",5);
+		delay(100);
+		dejar_tenedores(4);
 	}
 }
 /*inicializar el pcb*/

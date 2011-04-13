@@ -103,6 +103,7 @@ void prueba(int i)
 void tomar_tenedores(int i)
 {
 	wait(&mutex);
+	printf("\nEl filosofo %d esta hambriento", i+1);
 	estado[i] = hambriento;
 	prueba(i);
 	signal(&mutex);
