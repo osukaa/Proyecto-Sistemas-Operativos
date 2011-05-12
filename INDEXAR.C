@@ -1,88 +1,48 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h>
-#include <limits.h>
 
 FILE *hddFile;
 char *mode = "r";
 char hdd[] = "hdd.so";
-int indexPosition = 0;
+long int indexPosition = 13107201;
+long int indexRows = 0;
 
-void insertIndex(char * programName, long int programFinale)
+void insertIndex(char * programName, long int  programSize)
 {
-	int flag = -1;
-	int position = 0;
+	char buffer[24];
+	int tamano = 5;
+	long int aux = indexPosition+ programSize;
 	char readLine[23];
-	char final[] = "$$";
-	char * programInfo;
-	char * aux;
 	hddFile = fopen(hdd, "r+");
-	while(flag != 0)
-	{
-		fscanf(hddFile,"%s",&readLine);
-		flag = strcmp(readLine, final);
-		if(flag != 0)
-		{
-			position++;
-		}
-	}
-	fseek(hddFile, position, SEEK_SET);
-	fprintf(hddFile,"%s|%d|%d\n$$",programName,position,programFinale);
-	fclose(hddFile);
-}
-
-int index()
-{
-	char sline[23];
-	char aux[23];
-	char final[] = "$$";
-	int flag = -1;
-	char * finalPos;
-	long int finalPosition = 0;
-	//Abre el archivo del disco duro
-	hddFile = fopen(hdd, mode);
 	if (hddFile == NULL)
 	{
 		fprintf(stderr, "Error, no se encuentra el archivo del disco duro.\n");
 	}
 	else
 	{
-		//Buscar final del indice
-		while(flag != 0)
-		{
-			fscanf(hddFile,"%s",&sline);
-			flag = strcmp(sline, final);
-			if(flag != 0)
-			{
-				strcpy(aux,sline);
-				indexPosition = indexPosition + strlen(sline);
-			}
-		}
+		fseek(hddFile, indexRows, SEEK_SET);
+		fprintf(hddFile,"%s|%d|%d\n$$",programName,indexPosition,aux);
 		fclose(hddFile);
-		//hace un split para obtener donde termina el ultimo programa
-		finalPos = strtok(aux,"|");
-		while(finalPos != NULL)
-		{
-			strcpy(aux, finalPos);
-			finalPos = strtok(NULL,"|");
-		}
-		finalPosition = atol(aux);
+		tamano += strlen(programName);
+		itoa(indexPosition,buffer,10);
+		tamano += strlen(buffer);
+		itoa(aux,buffer,10);
+		tamano += strlen(buffer);
+		indexRows += tamano;
+		indexPosition += programSize;
 	}
-	return finalPosition;
 }
 
 void install(char originFile[])
 {
-	long int finalProgram;
 	FILE * installFile;
 	char line;
 	long int fileSize = 0;
 	//Obtiene la posicion donde va instalar el programa
-	finalProgram = index();
-	finalProgram += 13107201;
 	installFile = fopen(originFile,"r");
-	hddFile = fopen("hdd.so", "a+");
-	fseek(hddFile, finalProgram, SEEK_SET);
+	hddFile = fopen("hdd.so", "r+");
+	fseek(hddFile, indexPosition, SEEK_SET);
 	//poner contenido del archivo instalador
 	while(fscanf(installFile,"%c",&line) != EOF)
 	{
@@ -92,7 +52,7 @@ void install(char originFile[])
 	fclose(hddFile);
 	fclose(installFile);
 	line = 0;
-	insertIndex("file",fileSize);
+	insertIndex(originFile, fileSize);
 }
 
 void initHDD()
@@ -109,12 +69,19 @@ void initHDD()
 }
 
 main()
-
 {
+	char fileName[10];
+	clrscr();
 	initHDD();
-	printf("termino ciclo\n");
-	install("file.exe");
-	printf("Termino la instalacion\n");
-	getch();
+	printf("Desea instalar un nuevo programa?\n");
+	while(getch() == 0x79)
+	{
+		printf("Ingrese un archivo a instalar: ");
+		fgets(fileName,9,stdin);
+		install(fileName);
+		printf("Instalacion completa\n");
+		printf("Desea instalar un nuevo programa?\n");
+		getch();
+	}
 	return 0;
 }
