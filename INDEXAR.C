@@ -70,18 +70,27 @@ void initHDD()
 
 main()
 {
-	char fileName[10];
+	char fileName[8];
+	char compare[8] = "\n";
 	clrscr();
 	initHDD();
 	printf("Desea instalar un nuevo programa?\n");
 	while(getch() == 0x79)
 	{
+		strcpy(fileName,"00000000");
 		printf("Ingrese un archivo a instalar: ");
-		fgets(fileName,9,stdin);
-		install(fileName);
-		printf("Instalacion completa\n");
-		printf("Desea instalar un nuevo programa?\n");
-		getch();
+		fgets(fileName,7,stdin);
+		if(strcmp(fileName,compare) != 0)
+		{
+
+
+			install(fileName);
+			printf("Instalacion completa\n");
+			printf("Desea instalar un nuevo programa?\n");
+
+		}
+
+
 	}
 	return 0;
 }
